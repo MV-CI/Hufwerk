@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FarrierOS – Beta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0f0f0e;
+      --bg2: #161614;
+      --bg3: #1e1e1b;
+      --border: #272724;
+      --border2: #333330;
+      --gold: #b8852a;
+      --gold2: #d4a040;
+      --text: #ddd9d0;
+      --muted: #666460;
+      --muted2: #888480;
+      --danger-text: #d45a50;
+      --success-text: #4aaa70;
+      --warn-text: #c87a30;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; min-height: 100vh; line-height: 1.5; }
+
+    header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 100; }
+    .logo { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 900; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; }
+    .logo span { color: var(--muted2); font-weight: 400; font-size: 11px; letter-spacing: 3px; margin-left: 10px; }
+    nav { display: flex; }
+    nav button { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; padding: 6px 14px; cursor: pointer; text-transform: uppercase; letter-spacing: 1.5px; transition: color 0.15s; }
+    nav button:hover { color: var(--text); }
+    nav button.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    main { max-width: 1080px; margin: 0 auto; padding: 28px 24px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .section-title { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; }
+    .section-sub { color: var(--muted); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-top: 3px; }
+
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 20px; margin-bottom: 16px; }
+    .card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 14px; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+    @media(max-width:700px){ .grid2,.grid3,.grid4 { grid-template-columns: 1fr 1fr; } }
+    @media(max-width:480px){ .grid2,.grid3,.grid4 { grid-template-columns: 1fr; } }
+
+    .stat { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 18px 20px; }
+    .stat-num { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: var(--gold); line-height: 1; }
+    .stat-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 6px; }
+    .stat.negative .stat-num { color: var(--danger-text); }
+    .stat.positive .stat-num { color: var(--success-text); }
+
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 2px; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 500; }
+    .badge-danger { background: rgba(168,50,40,0.2); color: var(--danger-text); border: 1px solid rgba(168,50,40,0.25); }
+    .badge-warn { background: rgba(200,122,48,0.15); color: var(--warn-text); border: 1px solid rgba(200,122,48,0.2); }
+    .badge-ok { background: rgba(42,122,72,0.15); color: var(--success-text); border: 1px solid rgba(42,122,72,0.2); }
+    .badge-neutral { background: var(--bg3); color: var(--muted2); border: 1px solid var(--border2); }
+
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th { text-align: left; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 400; }
+    .tbl td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: var(--bg3); }
+
+    .form-group { margin-bottom: 14px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media(max-width:600px){ .form-row { grid-template-columns: 1fr; } }
+    label { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px; }
+    input, select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border2); color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; padding: 9px 12px; border-radius: 3px; outline: none; transition: border-color 0.15s; }
+    input:focus, select:focus, textarea:focus { border-color: var(--gold); }
+    textarea { resize: vertical; min-height: 80px; }
+    select option { background: var(--bg2); }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.15s; }
+    .btn-primary { background: var(--gold); color: #0f0f0e; font-weight: 500; }
+    .btn-primary:hover { background: var(--gold2); }
+    .btn-ghost { background: transparent; color: var(--muted2); border: 1px solid var(--border2); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--muted2); }
+    .btn-danger { background: rgba(168,50,40,0.15); color: var(--danger-text); border: 1px solid rgba(168,50,40,0.25); }
+    .btn-danger:hover { background: rgba(168,50,40,0.3); }
+    .btn-sm { padding: 4px 9px; font-size: 9px; }
+
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 4px; padding: 28px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--text); margin-bottom: 4px; }
+    .modal-sub { color: var(--muted); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 22px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+    .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; padding: 10px 16px; cursor: pointer; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: -1px; transition: color 0.15s; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    .filter-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filter-row select { width: auto; min-width: 140px; }
+
+    .overview-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .overview-item:last-child { border-bottom: none; }
+    .overview-item-name { font-size: 13px; }
+    .overview-item-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+    .mt12 { margin-top: 12px; }
+    .mt20 { margin-top: 20px; }
+    .flex { display: flex; align-items: center; gap: 10px; }
+    .text-muted { color: var(--muted); }
+    .text-sm { font-size: 11px; }
+    .loading { color: var(--muted); text-align: center; padding: 40px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; }
+    .empty { color: var(--muted); text-align: center; padding: 30px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Farrier<span style="color:var(--text);font-weight:700;font-size:18px;">OS</span><span style="font-size:9px;color:var(--muted);margin-left:10px;letter-spacing:3px;">BETA</span></div>
+  <nav>
+    <button class="active" onclick="showView('dashboard',this)">Dashboard</button>
+    <button onclick="showView('kunden',this)">Kunden</button>
+    <button onclick="showView('pferde',this)">Pferde</button>
+    <button onclick="showView('erfassen',this)">Erfassen</button>
+    <button onclick="showView('finanzen',this)">Finanzen</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- DASHBOARD -->
+  <div id="view-dashboard" class="view active">
+    <div class="section-header">
+      <div><div class="section-title">Dashboard</div><div class="section-sub" id="heute-datum"></div></div>
+    </div>
+    <div class="grid3" style="margin-bottom:20px;">
+      <div class="stat"><div class="stat-num" id="stat-kunden">–</div><div class="stat-label">Kunden</div></div>
+      <div class="stat"><div class="stat-num" id="stat-pferde">–</div><div class="stat-label">Pferde</div></div>
+      <div class="stat" id="stat-bilanz-box"><div class="stat-num" id="stat-bilanz">–</div><div class="stat-label" id="stat-bilanz-label">Bilanz CHF</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="card-label">Ueberfaellig</div><div id="ueberfaellig-list"><div class="loading">Wird geladen</div></div></div>
+      <div class="card"><div class="card-label">Faellig in 14 Tagen</div><div id="bald-list"><div class="loading">Wird geladen</div></div></div>
+    </div>
+    <div class="card mt20"><div class="card-label">Letzte Termine</div><div id="letzte-termine"><div class="loading">Wird geladen</div></div></div>
+  </div>
+
+  <!-- KUNDEN -->
+  <div id="view-kunden" class="view">
+    <div class="section-header">
+      <div><div class="section-title">Kunden</div><div class="section-sub" id="kunden-count"></div></div>
+      <button class="btn btn-primary" onclick="openModal('modal-kunden');clearKundeForm()">Kunde hinzufuegen</button>
+    </div>
+    <div class="card" style="padding:0">
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Telefon</th><th>Adresse</th><th>Pferde</th><th></th></tr></thead>
+        <tbody id="kunden-tbody"><tr><td colspan="5" class="loading">Wird geladen</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PFERDE -->
+  <div id="view-pferde" class="view">
+    <div class="section-header">
+      <div><div class="section-title">Pferde</div><div class="section-sub" id="pferde-count"></div></div>
+      <button class="btn btn-primary" onclick="openModal('modal-pferde');clearPferdForm()">Pferd hinzufuegen</button>
+    </div>
+    <div class="card" style="padding:0">
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>Besitzer</th><th>Beschlagsart</th><th>Letzter Termin</th><th>Naechster Termin</th><th>Status</th><th></th></tr></thead>
+        <tbody id="pferde-tbody"><tr><td colspan="7" class="loading">Wird geladen</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ERFASSEN -->
+  <div id="view-erfassen" class="view">
+    <div class="section-header"><div class="section-title">Termin erfassen</div></div>
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group"><label>Pferd *</label><select id="t-pferd"><option value="">– Pferd auswaehlen –</option></select></div>
+        <div class="form-group"><label>Datum *</label><input type="date" id="t-datum"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Leistung *</label>
+          <select id="t-leistung">
+            <option>Vollbeschlag</option><option>Vorderbeschlag</option><option>Hinterbeschlag</option>
+            <option>Ausschneiden</option><option>Korrekturmassnahme</option><option>Sonstiges</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Preis (CHF)</label><input type="number" id="t-preis" placeholder="0.00" step="0.01" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Kilometer (Anfahrt)</label><input type="number" id="t-km" placeholder="0" min="0"></div>
+        <div class="form-group"><label>Notizen</label><input type="text" id="t-notizen" placeholder="Optional"></div>
+      </div>
+      <div class="flex mt12">
+        <button class="btn btn-primary" onclick="saveTermin()">Termin speichern</button>
+        <span id="termin-status" class="text-muted text-sm"></span>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="card-label" style="margin-bottom:12px;">Alle Termine</div>
+    <div class="card" style="padding:0">
+      <table class="tbl">
+        <thead><tr><th>Datum</th><th>Pferd</th><th>Kunde</th><th>Leistung</th><th>Preis</th><th>KM</th><th></th></tr></thead>
+        <tbody id="termine-tbody"><tr><td colspan="7" class="loading">Wird geladen</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FINANZEN -->
+  <div id="view-finanzen" class="view">
+    <div class="section-header">
+      <div><div class="section-title">Finanzen</div><div class="section-sub" id="finanzen-zeitraum"></div></div>
+      <div class="filter-row" style="margin:0; gap:8px;">
+        <select id="filter-monat-f" onchange="loadFinanzen()"></select>
+        <select id="filter-jahr-f" onchange="loadFinanzen()"></select>
+      </div>
+    </div>
+
+    <!-- BILANZ OBEN -->
+    <div style="background:var(--bg2); border:1px solid var(--border); border-radius:4px; padding:20px; margin-bottom:20px;">
+      <div class="card-label" style="margin-bottom:12px;">Bilanz</div>
+      <div class="grid3">
+        <div class="stat positive" style="margin:0;"><div class="stat-num" id="b-einnahmen">0.00</div><div class="stat-label">Einnahmen CHF</div></div>
+        <div class="stat negative" style="margin:0;"><div class="stat-num" id="b-ausgaben">0.00</div><div class="stat-label">Ausgaben CHF</div></div>
+        <div class="stat" id="b-gewinn-stat" style="margin:0;"><div class="stat-num" id="b-gewinn">0.00</div><div class="stat-label">Gewinn CHF</div></div>
+      </div>
+    </div>
+
+    <!-- SPLIT: EINNAHMEN LINKS / AUSGABEN RECHTS -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+      <!-- EINNAHMEN -->
+      <div>
+        <div class="card">
+          <div class="card-label">Einnahme erfassen</div>
+          <div class="form-group"><label>Datum *</label><input type="date" id="e-datum"></div>
+          <div class="form-group"><label>Beschreibung *</label><input type="text" id="e-beschreibung" placeholder="z.B. Vollbeschlag Amadeus"></div>
+          <div class="form-group"><label>Betrag (CHF) *</label><input type="number" id="e-betrag" placeholder="0.00" step="0.01" min="0" oninput="updateBilanzPreview()"></div>
+          <div class="form-group"><label>Kunde</label><select id="e-kunde-f"><option value="">– Optional –</option></select></div>
+          <div class="flex mt12">
+            <button class="btn btn-primary" onclick="saveEinnahme()">Speichern</button>
+            <span id="einnahme-status" class="text-muted text-sm"></span>
+          </div>
+        </div>
+        <div class="card" style="padding:0">
+          <table class="tbl">
+            <thead><tr><th>Datum</th><th>Beschreibung</th><th>CHF</th><th></th></tr></thead>
+            <tbody id="einnahmen-f-tbody"><tr><td colspan="4" class="loading">Wird geladen</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AUSGABEN -->
+      <div>
+        <div class="card">
+          <div class="card-label">Ausgabe erfassen</div>
+          <div class="form-group"><label>Datum *</label><input type="date" id="a-datum"></div>
+          <div class="form-group"><label>Kategorie *</label>
+            <select id="a-kategorie">
+              <option>Material / Eisen</option><option>Werkzeug</option><option>Fahrzeug / Kraftstoff</option>
+              <option>Versicherung</option><option>Weiterbildung</option><option>Bueroaufwand</option><option>Sonstiges</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Beschreibung *</label><input type="text" id="a-beschreibung" placeholder="z.B. Hufeisen Groesse 3"></div>
+          <div class="form-group"><label>Betrag (CHF) *</label><input type="number" id="a-betrag" placeholder="0.00" step="0.01" min="0" oninput="updateBilanzPreview()"></div>
+          <div class="form-group"><label>Belegnummer</label><input type="text" id="a-beleg" placeholder="Optional"></div>
+          <div class="flex mt12">
+            <button class="btn btn-primary" onclick="saveAusgabe()">Speichern</button>
+            <span id="ausgabe-status" class="text-muted text-sm"></span>
+          </div>
+        </div>
+        <div class="card" style="padding:0">
+          <table class="tbl">
+            <thead><tr><th>Datum</th><th>Beschreibung</th><th>CHF</th><th></th></tr></thead>
+            <tbody id="ausgaben-f-tbody"><tr><td colspan="4" class="loading">Wird geladen</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL KUNDE -->
+<div class="overlay" id="modal-kunden">
+  <div class="modal">
+    <div class="modal-title" id="modal-kunden-title">Neuer Kunde</div>
+    <div class="modal-sub">Kundenstammdaten</div>
+    <input type="hidden" id="k-id">
+    <div class="form-group"><label>Name *</label><input id="k-name" placeholder="Vorname Nachname"></div>
+    <div class="form-group"><label>Telefon</label><input id="k-tel" placeholder="+49..."></div>
+    <div class="form-group"><label>Adresse</label><input id="k-adr" placeholder="Strasse, PLZ Ort"></div>
+    <div class="form-group"><label>Notizen</label><textarea id="k-notiz" placeholder="Besonderheiten..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-kunden')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="saveKunde()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PFERD -->
+<div class="overlay" id="modal-pferde">
+  <div class="modal">
+    <div class="modal-title" id="modal-pferde-title">Neues Pferd</div>
+    <div class="modal-sub">Pferdedaten</div>
+    <input type="hidden" id="p-id">
+    <div class="form-group"><label>Name *</label><input id="p-name" placeholder="Name des Pferdes"></div>
+    <div class="form-group"><label>Besitzer *</label><select id="p-kunde"><option value="">– Kunde auswaehlen –</option></select></div>
+    <div class="form-group"><label>Rasse</label><input id="p-rasse" placeholder="z.B. Hannoveraner"></div>
+    <div class="form-group"><label>Beschlagsart</label>
+      <select id="p-beschlag"><option>Vollbeschlag</option><option>Vorderbeschlag</option><option>Hinterbeschlag</option><option>Barhuf</option><option>Korrektur</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Intervall (Wochen)</label><input id="p-intervall" type="number" value="8" min="1" max="52"></div>
+      <div class="form-group"><label>Letzter Termin</label><input id="p-letzter" type="date"></div>
+    </div>
+    <div class="form-group"><label>Notizen</label><textarea id="p-notiz" placeholder="Problemhufe, Eigenheiten..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pferde')">Abbrechen</button>
+      <button class="btn btn-primary" onclick="savePferd()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const sb = supabase.createClient(
+  'https://tmhgcienlmyeqbssejyu.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtaGdjaWVubG15ZXFic3NlanllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MTA0ODcsImV4cCI6MjA4ODQ4NjQ4N30.35voy3BPh7mfoEz3LHq_MUFlLz7SFD9lL-TOZu31uD4'
+);
+
+function showView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(name==='dashboard') loadDashboard();
+  if(name==='kunden') loadKunden();
+  if(name==='pferde') loadPferde();
+  if(name==='erfassen') { loadTermine(); loadPferdeSelect('#t-pferd'); document.getElementById('t-datum').value=today(); }
+  if(name==='finanzen') { initFilters(); loadFinanzen(); }
+}
+
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display='none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).style.display='block';
+  if(btn) btn.classList.add('active');
+  if(id==='ausgaben-tab') loadAusgaben();
+  if(id==='uebersicht-tab') loadUebersicht();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); if(id==='modal-pferde') loadKundenSelect('#p-kunde'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
+
+function formatDate(d) {
+  if(!d) return '–';
+  return new Date(d+'T00:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+function daysDiff(d) { if(!d) return null; const n=new Date(); n.setHours(0,0,0,0); return Math.round((new Date(d+'T00:00:00')-n)/86400000); }
+function statusBadge(p) {
+  const diff=daysDiff(p.naechster_termin);
+  if(diff===null) return '<span class="badge badge-neutral">Kein Termin</span>';
+  if(diff<0) return `<span class="badge badge-danger">Ueberfaellig ${Math.abs(diff)}d</span>`;
+  if(diff<=14) return `<span class="badge badge-warn">Faellig in ${diff}d</span>`;
+  return '<span class="badge badge-ok">Planmaessig</span>';
+}
+function applyDateFilter(q, jahr, monat) {
+  if(jahr && monat) {
+    const m=parseInt(monat), y=parseInt(jahr), nm=m===12?1:m+1, ny=m===12?y+1:y;
+    return q.gte('datum',`${y}-${String(m).padStart(2,'0')}-01`).lt('datum',`${ny}-${String(nm).padStart(2,'0')}-01`);
+  }
+  if(jahr) return q.gte('datum',`${jahr}-01-01`).lt('datum',`${parseInt(jahr)+1}-01-01`);
+  return q;
+}
+
+async function loadDashboard() {
+  document.getElementById('heute-datum').textContent = new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).toUpperCase();
+  const ms = new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0];
+  const [kR,pR,tR,aR] = await Promise.all([
+    sb.from('kunden').select('id',{count:'exact',head:true}),
+    sb.from('pferde').select('id',{count:'exact',head:true}),
+    sb.from('termine').select('preis').gte('datum',ms),
+    sb.from('ausgaben').select('betrag').gte('datum',ms)
+  ]);
+  document.getElementById('stat-kunden').textContent = kR.count??0;
+  document.getElementById('stat-pferde').textContent = pR.count??0;
+  const einnahmen=(tR.data||[]).reduce((s,t)=>s+parseFloat(t.preis||0),0);
+  const ausgaben=(aR.data||[]).reduce((s,a)=>s+parseFloat(a.betrag||0),0);
+  const bilanz=einnahmen-ausgaben;
+  const monatName=new Date().toLocaleDateString('de-DE',{month:'long',year:'numeric'});
+  document.getElementById('stat-bilanz').textContent=bilanz.toFixed(2);
+  document.getElementById('stat-bilanz-label').textContent=`Bilanz (${monatName})`;
+  document.getElementById('stat-bilanz-box').className='stat '+(bilanz>=0?'positive':'negative');
+
+  const {data:ap} = await sb.from('pferde').select('*,kunden(name)').not('naechster_termin','is',null);
+  const n=today(), i14=new Date(); i14.setDate(i14.getDate()+14); const i14s=i14.toISOString().split('T')[0];
+  const ue=(ap||[]).filter(p=>p.naechster_termin<n), ba=(ap||[]).filter(p=>p.naechster_termin>=n&&p.naechster_termin<=i14s);
+
+  document.getElementById('ueberfaellig-list').innerHTML = !ue.length ? '<div class="empty">Keine ueberfaelligen Pferde</div>'
+    : ue.map(p=>`<div class="overview-item"><div><div class="overview-item-name">${p.name}</div><div class="overview-item-sub">${p.kunden?.name||'–'}</div></div><span class="badge badge-danger">${Math.abs(daysDiff(p.naechster_termin))} Tage</span></div>`).join('');
+
+  document.getElementById('bald-list').innerHTML = !ba.length ? '<div class="empty">Nichts in den naechsten 14 Tagen</div>'
+    : ba.map(p=>`<div class="overview-item"><div><div class="overview-item-name">${p.name}</div><div class="overview-item-sub">${p.kunden?.name||'–'}</div></div><span class="text-muted text-sm">${formatDate(p.naechster_termin)}</span></div>`).join('');
+
+  const {data:lt} = await sb.from('termine').select('*,pferde(name),kunden(name)').order('datum',{ascending:false}).limit(5);
+  document.getElementById('letzte-termine').innerHTML = !lt?.length ? '<div class="empty">Noch keine Termine erfasst</div>'
+    : `<table class="tbl"><thead><tr><th>Datum</th><th>Pferd</th><th>Kunde</th><th>Leistung</th><th>CHF</th></tr></thead><tbody>${lt.map(t=>`<tr><td>${formatDate(t.datum)}</td><td>${t.pferde?.name||'–'}</td><td>${t.kunden?.name||'–'}</td><td>${t.leistung}</td><td>${parseFloat(t.preis||0).toFixed(2)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+async function loadKunden() {
+  const {data} = await sb.from('kunden').select('*,pferde(id)').order('name');
+  document.getElementById('kunden-count').textContent = `${data?.length||0} Kunden`;
+  document.getElementById('kunden-tbody').innerHTML = !data?.length ? '<tr><td colspan="5" class="empty">Noch keine Kunden</td></tr>'
+    : data.map(k=>`<tr><td><strong>${k.name}</strong></td><td>${k.telefon||'–'}</td><td>${k.adresse||'–'}</td><td>${k.pferde?.length||0}</td><td><button class="btn btn-ghost btn-sm" onclick="editKunde('${k.id}')">Bearbeiten</button></td></tr>`).join('');
+}
+
+async function saveKunde() {
+  const id=document.getElementById('k-id').value;
+  const data={name:document.getElementById('k-name').value.trim(),telefon:document.getElementById('k-tel').value.trim(),adresse:document.getElementById('k-adr').value.trim(),notizen:document.getElementById('k-notiz').value.trim()};
+  if(!data.name) return alert('Name ist erforderlich');
+  if(id) await sb.from('kunden').update(data).eq('id',id); else await sb.from('kunden').insert(data);
+  closeModal('modal-kunden'); loadKunden();
+}
+
+async function editKunde(id) {
+  const {data} = await sb.from('kunden').select().eq('id',id).single();
+  document.getElementById('k-id').value=data.id; document.getElementById('k-name').value=data.name||'';
+  document.getElementById('k-tel').value=data.telefon||''; document.getElementById('k-adr').value=data.adresse||'';
+  document.getElementById('k-notiz').value=data.notizen||''; document.getElementById('modal-kunden-title').textContent='Kunde bearbeiten';
+  openModal('modal-kunden');
+}
+
+function clearKundeForm() {
+  ['k-id','k-name','k-tel','k-adr','k-notiz'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('modal-kunden-title').textContent='Neuer Kunde';
+}
+
+async function loadPferde() {
+  const {data} = await sb.from('pferde').select('*,kunden(name)').order('name');
+  document.getElementById('pferde-count').textContent = `${data?.length||0} Pferde`;
+  document.getElementById('pferde-tbody').innerHTML = !data?.length ? '<tr><td colspan="7" class="empty">Noch keine Pferde</td></tr>'
+    : data.map(p=>`<tr><td><strong>${p.name}</strong>${p.rasse?`<br><span class="text-muted text-sm">${p.rasse}</span>`:''}</td><td>${p.kunden?.name||'–'}</td><td>${p.beschlagsart||'–'}</td><td>${formatDate(p.letzter_termin)}</td><td>${formatDate(p.naechster_termin)}</td><td>${statusBadge(p)}</td><td><button class="btn btn-ghost btn-sm" onclick="editPferd('${p.id}')">Bearbeiten</button></td></tr>`).join('');
+}
+
+async function savePferd() {
+  const id=document.getElementById('p-id').value, letzter=document.getElementById('p-letzter').value, intervall=parseInt(document.getElementById('p-intervall').value)||8;
+  let naechster=null;
+  if(letzter){ const d=new Date(letzter+'T00:00:00'); d.setDate(d.getDate()+intervall*7); naechster=d.toISOString().split('T')[0]; }
+  const data={name:document.getElementById('p-name').value.trim(),kunden_id:document.getElementById('p-kunde').value,rasse:document.getElementById('p-rasse').value.trim(),beschlagsart:document.getElementById('p-beschlag').value,intervall_wochen:intervall,letzter_termin:letzter||null,naechster_termin:naechster,notizen:document.getElementById('p-notiz').value.trim()};
+  if(!data.name) return alert('Name ist erforderlich');
+  if(!data.kunden_id) return alert('Besitzer ist erforderlich');
+  if(id) await sb.from('pferde').update(data).eq('id',id); else await sb.from('pferde').insert(data);
+  closeModal('modal-pferde'); clearPferdForm(); loadPferde();
+}
+
+async function editPferd(id) {
+  await loadKundenSelect('#p-kunde');
+  const {data} = await sb.from('pferde').select().eq('id',id).single();
+  document.getElementById('p-id').value=data.id; document.getElementById('p-name').value=data.name||'';
+  document.getElementById('p-kunde').value=data.kunden_id||''; document.getElementById('p-rasse').value=data.rasse||'';
+  document.getElementById('p-beschlag').value=data.beschlagsart||'Vollbeschlag'; document.getElementById('p-intervall').value=data.intervall_wochen||8;
+  document.getElementById('p-letzter').value=data.letzter_termin||''; document.getElementById('p-notiz').value=data.notizen||'';
+  document.getElementById('modal-pferde-title').textContent='Pferd bearbeiten'; openModal('modal-pferde');
+}
+
+function clearPferdForm() {
+  ['p-id','p-name','p-rasse','p-notiz','p-letzter'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p-intervall').value=8; document.getElementById('modal-pferde-title').textContent='Neues Pferd';
+}
+
+async function loadPferdeSelect(sel) {
+  const {data} = await sb.from('pferde').select('id,name,kunden(name)').order('name');
+  const el=document.querySelector(sel), cur=el.value;
+  el.innerHTML='<option value="">– Pferd auswaehlen –</option>'+(data||[]).map(p=>`<option value="${p.id}">${p.name} (${p.kunden?.name||'?'})</option>`).join('');
+  if(cur) el.value=cur;
+}
+
+async function loadKundenSelect(sel) {
+  const {data} = await sb.from('kunden').select('id,name').order('name');
+  const el=document.querySelector(sel), cur=el.value;
+  el.innerHTML='<option value="">– Kunde auswaehlen –</option>'+(data||[]).map(k=>`<option value="${k.id}">${k.name}</option>`).join('');
+  if(cur) el.value=cur;
+}
+
+async function saveTermin() {
+  const pferdId=document.getElementById('t-pferd').value, datum=document.getElementById('t-datum').value;
+  if(!pferdId||!datum) return alert('Pferd und Datum sind erforderlich');
+  const preis=parseFloat(document.getElementById('t-preis').value)||0, km=parseFloat(document.getElementById('t-km').value)||0;
+  const notizen=document.getElementById('t-notizen').value.trim();
+  const {data:pferd} = await sb.from('pferde').select('kunden_id,intervall_wochen').eq('id',pferdId).single();
+  await sb.from('termine').insert({pferd_id:pferdId,kunden_id:pferd?.kunden_id,datum,leistung:document.getElementById('t-leistung').value,preis,kilometer:km,notizen});
+  const n=new Date(datum+'T00:00:00'); n.setDate(n.getDate()+(pferd?.intervall_wochen||8)*7);
+  await sb.from('pferde').update({letzter_termin:datum,naechster_termin:n.toISOString().split('T')[0]}).eq('id',pferdId);
+  ['t-pferd','t-preis','t-km','t-notizen'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('t-datum').value=today();
+  document.getElementById('termin-status').textContent='Gespeichert.';
+  setTimeout(()=>document.getElementById('termin-status').textContent='',2500);
+  loadTermine();
+}
+
+async function loadTermine() {
+  const {data} = await sb.from('termine').select('*,pferde(name),kunden(name)').order('datum',{ascending:false}).limit(50);
+  document.getElementById('termine-tbody').innerHTML = !data?.length ? '<tr><td colspan="7" class="empty">Noch keine Termine</td></tr>'
+    : data.map(t=>`<tr><td>${formatDate(t.datum)}</td><td>${t.pferde?.name||'–'}</td><td>${t.kunden?.name||'–'}</td><td>${t.leistung}</td><td>${parseFloat(t.preis||0).toFixed(2)}</td><td>${t.kilometer||0}</td><td><button class="btn btn-danger btn-sm" onclick="deleteTermin('${t.id}')">Loeschen</button></td></tr>`).join('');
+}
+
+async function deleteTermin(id) { if(!confirm('Termin loeschen?')) return; await sb.from('termine').delete().eq('id',id); loadTermine(); }
+
+async function saveEinnahme() {
+  const datum=document.getElementById('e-datum').value, beschreibung=document.getElementById('e-beschreibung').value.trim(), betrag=parseFloat(document.getElementById('e-betrag').value)||0;
+  if(!datum||!beschreibung||!betrag) return alert('Datum, Beschreibung und Betrag sind erforderlich');
+  const kunden_id=document.getElementById('e-kunde-f').value||null;
+  await sb.from('einnahmen').insert({datum,beschreibung,betrag,kunden_id});
+  ['e-beschreibung','e-betrag'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('e-datum').value=today();
+  document.getElementById('einnahme-status').textContent='Gespeichert.';
+  setTimeout(()=>document.getElementById('einnahme-status').textContent='',2500);
+  loadFinanzen();
+}
+
+async function saveAusgabe() {
+  const datum=document.getElementById('a-datum').value, beschreibung=document.getElementById('a-beschreibung').value.trim(), betrag=parseFloat(document.getElementById('a-betrag').value)||0;
+  if(!datum||!beschreibung||!betrag) return alert('Datum, Beschreibung und Betrag sind erforderlich');
+  await sb.from('ausgaben').insert({datum,kategorie:document.getElementById('a-kategorie').value,beschreibung,betrag,beleg:document.getElementById('a-beleg').value.trim()});
+  ['a-beschreibung','a-betrag','a-beleg'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('a-datum').value=today();
+  document.getElementById('ausgabe-status').textContent='Gespeichert.';
+  setTimeout(()=>document.getElementById('ausgabe-status').textContent='',2500);
+  loadFinanzen();
+}
+
+async function loadFinanzen() {
+  const j=document.getElementById('filter-jahr-f')?.value, m=document.getElementById('filter-monat-f')?.value;
+  const [eR,aR] = await Promise.all([
+    applyDateFilter(sb.from('einnahmen').select('*,kunden(name)').order('datum',{ascending:false}),j,m),
+    applyDateFilter(sb.from('ausgaben').select('*').order('datum',{ascending:false}),j,m)
+  ]);
+  const einnahmen=(eR.data||[]).reduce((s,e)=>s+parseFloat(e.betrag||0),0);
+  const ausgaben=(aR.data||[]).reduce((s,a)=>s+parseFloat(a.betrag||0),0);
+  const gewinn=einnahmen-ausgaben;
+  document.getElementById('b-einnahmen').textContent=einnahmen.toFixed(2);
+  document.getElementById('b-ausgaben').textContent=ausgaben.toFixed(2);
+  document.getElementById('b-gewinn').textContent=gewinn.toFixed(2);
+  document.getElementById('b-gewinn-stat').className='stat '+(gewinn>=0?'positive':'negative')+' style="margin:0;"';
+  document.getElementById('einnahmen-f-tbody').innerHTML = !eR.data?.length ? '<tr><td colspan="4" class="empty">Keine Einnahmen</td></tr>'
+    : eR.data.map(e=>`<tr><td>${formatDate(e.datum)}</td><td>${e.beschreibung}</td><td>${parseFloat(e.betrag||0).toFixed(2)}</td><td><button class="btn btn-danger btn-sm" onclick="deleteEinnahme('${e.id}')">Loeschen</button></td></tr>`).join('');
+  document.getElementById('ausgaben-f-tbody').innerHTML = !aR.data?.length ? '<tr><td colspan="4" class="empty">Keine Ausgaben</td></tr>'
+    : aR.data.map(a=>`<tr><td>${formatDate(a.datum)}</td><td>${a.beschreibung}<br><span class="text-muted text-sm">${a.kategorie}</span></td><td>${parseFloat(a.betrag||0).toFixed(2)}</td><td><button class="btn btn-danger btn-sm" onclick="deleteAusgabe('${a.id}')">Loeschen</button></td></tr>`).join('');
+}
+
+function updateBilanzPreview() {}
+
+async function deleteEinnahme(id) { if(!confirm('Einnahme loeschen?')) return; await sb.from('einnahmen').delete().eq('id',id); loadFinanzen(); }
+async function deleteAusgabe(id) { if(!confirm('Ausgabe loeschen?')) return; await sb.from('ausgaben').delete().eq('id',id); loadFinanzen(); }
+
+async function loadEinnahmen() { /* legacy */ }
+
+function initFilters() {
+  const monate=['Januar','Februar','Maerz','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  const cy=new Date().getFullYear(), cm=String(new Date().getMonth()+1).padStart(2,'0');
+  ['filter-monat-f'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML='<option value="">Alle Monate</option>'+monate.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');
+    el.value=cm;
+  });
+  ['filter-jahr-f'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.innerHTML='<option value="">Alle Jahre</option>';
+    for(let y=cy;y>=cy-3;y--) el.innerHTML+=`<option value="${y}">${y}</option>`;
+    el.value=String(cy);
+  });
+  document.getElementById('a-datum').value=today();
+  document.getElementById('e-datum').value=today();
+  loadKundenSelect('#e-kunde-f');
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
